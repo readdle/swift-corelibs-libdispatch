@@ -117,7 +117,7 @@ extension DispatchQueue {
 	}
 
     #if os(Android)
-	private static let androidSwiftMain = DispatchQueue(label: "AndroidSwiftMain")
+	private static let androidSwiftMain = DispatchQueue(label: "AndroidSwiftMain", qos: .userInteractive)
 
 	public class var main: DispatchQueue {
         return androidSwiftMain
