@@ -6168,10 +6168,19 @@ _dispatch_root_queue_init_pthread_pool(dispatch_queue_global_t dq,
 		int pool_size, dispatch_priority_t pri)
 {
 	dispatch_pthread_root_queue_context_t pqc = dq->do_ctxt;
+	int32_t default_pool_size = 0;
+	char* default_pool_size_env = getenv("LIBDISPATCH_DEFAULT_THREAD_POOL_SIZE");
+	if (default_pool_size_env) {
+		default_pool_size = (int32_t) atoi(default_pool_size_env);
+	}
+	if (!default_pool_size) {
+		default_pool_size = (int32_t) MAX(dispatch_hw_config(active_cpus) * 5, WORKQUEUE_CONSTRAINED_MAXTHREADS);
+	}
 	int thread_pool_size = DISPATCH_WORKQ_MAX_PTHREAD_COUNT;
 	if (!(pri & DISPATCH_PRIORITY_FLAG_OVERCOMMIT)) {
-		thread_pool_size = (int32_t)dispatch_hw_config(active_cpus);
+		thread_pool_size = default_pool_size;
 	}
+
 	if (pool_size && pool_size < thread_pool_size) thread_pool_size = pool_size;
 	dq->dgq_thread_pool_size = thread_pool_size;
 	qos_class_t cls = _dispatch_qos_to_qos_class(_dispatch_priority_qos(pri) ?:

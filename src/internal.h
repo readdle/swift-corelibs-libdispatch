@@ -1112,6 +1112,12 @@ extern bool _dispatch_kevent_workqueue_enabled;
 #include "inline_internal.h"
 #include "firehose/firehose_internal.h"
 
-__END_DECLS
+#if !HAVE_PTHREAD_WORKQUEUE_KEVENT
+// copied from https://opensource.apple.com/source/libpthread/libpthread-301.50.1/kern/workqueue_internal.h.auto.html
+#define WORKQUEUE_MAXTHREADS 512
+#define WORKQUEUE_CONSTRAINED_MAXTHREADS (WORKQUEUE_MAXTHREADS >> 3)
+#define WORKQUEUE_CONSTRAINED_FACTOR 5
+#endif
 
+__END_DECLS
 #endif /* __DISPATCH_INTERNAL__ */
