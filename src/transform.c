@@ -26,6 +26,13 @@
 #include <endian.h>
 #define OSLittleEndian __LITTLE_ENDIAN
 #define OSBigEndian __BIG_ENDIAN
+#elif defined(__FreeBSD__)
+#include <sys/endian.h>
+#define OSLittleEndian _LITTLE_ENDIAN
+#define OSBigEndian _BIG_ENDIAN
+#endif
+
+#if defined(__linux__) || defined(__FreeBSD__)
 #define OSSwapLittleToHostInt16 le16toh
 #define OSSwapBigToHostInt16 be16toh
 #define OSSwapHostToLittleInt16 htole16
@@ -59,7 +66,7 @@ enum {
 static const unsigned char base32_encode_table[] =
 		"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
-static const char base32_decode_table[] = {
+static const signed char base32_decode_table[] = {
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 26,
@@ -67,13 +74,13 @@ static const char base32_decode_table[] = {
 	 3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
 	20, 21, 22, 23, 24, 25
 };
-static const ssize_t base32_decode_table_size = sizeof(base32_decode_table)
-		/ sizeof(*base32_decode_table);
+static const ssize_t base32_decode_table_size =
+		sizeof(base32_decode_table) / sizeof(*base32_decode_table);
 
 static const unsigned char base32hex_encode_table[] =
 		"0123456789ABCDEFGHIJKLMNOPQRSTUV";
 
-static const char base32hex_decode_table[] = {
+static const signed char base32hex_decode_table[] = {
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  0,  1,  2,
@@ -87,7 +94,7 @@ static const ssize_t base32hex_decode_table_size =
 static const unsigned char base64_encode_table[] =
 		"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-static const char base64_decode_table[] = {
+static const signed char base64_decode_table[] = {
 	-1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
 	-1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
 	-1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
@@ -99,8 +106,8 @@ static const char base64_decode_table[] = {
 	41,  42,  43,  44,  45,  46,  47,  48,  49,  50,  51
 };
 
-static const ssize_t base64_decode_table_size = sizeof(base64_decode_table)
-		/ sizeof(*base64_decode_table);
+static const ssize_t base64_decode_table_size =
+		sizeof(base64_decode_table) / sizeof(*base64_decode_table);
 
 #pragma mark -
 #pragma mark dispatch_transform_buffer
@@ -555,7 +562,7 @@ _dispatch_transform_to_utf16be(dispatch_data_t data)
 
 static dispatch_data_t
 _dispatch_transform_from_base32_with_table(dispatch_data_t data,
-		const char* table, ssize_t table_size)
+		const signed char* table, ssize_t table_size)
 {
 	__block uint64_t x = 0, count = 0, pad = 0;
 
@@ -585,7 +592,7 @@ _dispatch_transform_from_base32_with_table(dispatch_data_t data,
 			}
 			count++;
 
-			char value = table[index];
+			signed char value = table[index];
 			if (value == -2) {
 				value = 0;
 				pad++;
@@ -830,7 +837,7 @@ _dispatch_transform_from_base64(dispatch_data_t data)
 			}
 			count++;
 
-			char value = base64_decode_table[index];
+			signed char value = base64_decode_table[index];
 			if (value == -2) {
 				value = 0;
 				pad++;
