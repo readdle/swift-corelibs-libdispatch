@@ -39,8 +39,16 @@ public class DispatchWorkItem {
 	internal var _block: _DispatchBlock
 
 	public init(qos: DispatchQoS = .unspecified, flags: DispatchWorkItemFlags = [], block: @escaping @convention(block) () -> ()) {
+		class FixMemoryLeakHack {
+			var externalBlock: (() -> Void)? = nil
+		}
+		let _internalBlock = FixMemoryLeakHack()
+		_internalBlock.externalBlock = block
 		_block =  dispatch_block_create_with_qos_class(dispatch_block_flags_t(flags.rawValue),
-			qos.qosClass.rawValue.rawValue, Int32(qos.relativePriority), block)
+			qos.qosClass.rawValue.rawValue, Int32(qos.relativePriority), {
+					_internalBlock.externalBlock?()
+					_internalBlock.externalBlock = nil
+				})
 	}
 
 	// Used by DispatchQueue.synchronously<T> to provide a path through
