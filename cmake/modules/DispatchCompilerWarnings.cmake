@@ -5,7 +5,6 @@ if("${CMAKE_C_SIMULATE_ID}" STREQUAL "MSVC")
   endmacro()
 else()
   macro(dispatch_common_warnings)
-    add_compile_options(-Werror)
     add_compile_options(-Wall)
     add_compile_options(-Wextra)
 
