@@ -263,7 +263,7 @@ if(ENABLE_SWIFT)
             ${CMAKE_CURRENT_BINARY_DIR}/swift/Dispatch.swiftmodule
             ${CMAKE_CURRENT_BINARY_DIR}/swift/Dispatch.swiftdoc
           DESTINATION
-            ${INSTALL_TARGET_DIR}/${swift_arch})
+            ${INSTALL_TARGET_DIR_SWIFTMODULES})
 
   if(BUILD_SHARED_LIBS)
     set(library_kind SHARED)
