@@ -32,115 +32,114 @@
 
 #define TAILQ_HEAD(list_name, elem_type) \
 	struct list_name { \
-		struct elem_type *tq_first; \
-		struct elem_type *tq_last; \
+		struct elem_type *tqh_first; \
+		struct elem_type **tqh_last; \
 	}
 
 #define TAILQ_ENTRY(elem_type) \
 	struct { \
-		struct elem_type *te_next; \
-		struct elem_type *te_prev; \
+		struct elem_type *tqe_next; \
+		struct elem_type **tqe_prev; \
 	}
 
-#define TAILQ_INIT(list) do { \
-		(list)->tq_first = NULL; \
-		(list)->tq_last = NULL; \
-	} while (0)
-
-#define TAILQ_EMPTY(list) ((list)->tq_first == NULL)
-
-#define TAILQ_FIRST(list) ((list)->tq_first)
-
-#define TAILQ_LAST(list) ((list)->tq_last)
-
-#define TAILQ_NEXT(elem, field) ((elem)->field.te_next)
-
-#define TAILQ_PREV(elem, list, field) ((elem)->field.te_prev)
-
-#define TAILQ_FOREACH(var, list, field) \
-	for ((var) = TAILQ_FIRST(list); \
-	(var) != NULL; \
-	(var) = TAILQ_NEXT(var, field))
-
-#define TAILQ_REMOVE(list, elem, field) do { \
-		if (TAILQ_NEXT(elem, field) != NULL) { \
-			TAILQ_NEXT(elem, field)->field.te_prev = (elem)->field.te_prev; \
-		} else { \
-			(list)->tq_last = (elem)->field.te_prev; \
-		} \
-		if (TAILQ_PREV(elem, list, field) != NULL) { \
-			TAILQ_PREV(elem, list, field)->field.te_next = (elem)->field.te_next; \
-		} else { \
-			(list)->tq_first = (elem)->field.te_next; \
-		} \
-		TRASHIT((elem)->field.te_next); \
-		TRASHIT((elem)->field.te_prev); \
-	} while(0)
-
-#define TAILQ_INSERT_TAIL(list, elem, field) do { \
-		if (TAILQ_EMPTY(list)) { \
-			(list)->tq_first = (list)->tq_last = (elem); \
-			(elem)->field.te_prev = (elem)->field.te_next = NULL; \
-		} else { \
-			(elem)->field.te_next = NULL; \
-			(elem)->field.te_prev = (list)->tq_last; \
-			TAILQ_LAST(list)->field.te_next = (elem); \
-			(list)->tq_last = (elem); \
-		} \
-	} while(0)
-
-#define TAILQ_HEAD_INITIALIZER(head) \
-	{ NULL, (head).tq_first }
-
-#define TAILQ_CONCAT(head1, head2, field) do { \
-		if (!TAILQ_EMPTY(head2)) { \
-			(head1)->tq_last = (head2)->tq_first; \
-			(head1)->tq_first->field.te_prev = (head1)->tq_last; \
-			(head1)->tq_last = (head2)->tq_last; \
-			TAILQ_INIT((head2)); \
-		} \
-	} while (0)
-
-#define LIST_HEAD(name, type) struct name { \
-		struct type *lh_first; \
-	}
-
-#define LIST_ENTRY(type) struct { \
-		struct type *le_next; \
-		struct type **le_prev; \
-	}
-
-#define	LIST_EMPTY(head) ((head)->lh_first == NULL)
-
-#define LIST_FIRST(head) ((head)->lh_first)
-
-#define LIST_FOREACH(var, head, field) \
-	for ((var) = LIST_FIRST((head)); \
-		(var); \
-		(var) = LIST_NEXT((var), field))
-
-#define	LIST_FOREACH_SAFE(var, head, field, tvar) \
-	for ((var) = LIST_FIRST((head)); \
-		(var) && ((tvar) = LIST_NEXT((var), field), 1); \
-		(var) = (tvar))
-
-#define	LIST_INIT(head) do { \
-	LIST_FIRST((head)) = NULL; \
+#define	TAILQ_INIT(head) do {						\
+	TAILQ_FIRST((head)) = NULL;					\
+	(head)->tqh_last = &TAILQ_FIRST((head));			\
 } while (0)
 
-#define LIST_NEXT(elm, field) ((elm)->field.le_next)
+#define	TAILQ_EMPTY(head)	((head)->tqh_first == NULL)
 
-#define LIST_REMOVE(elm, field) do { \
-		if (LIST_NEXT((elm), field) != NULL) \
-			LIST_NEXT((elm), field)->field.le_prev = (elm)->field.le_prev; \
-		*(elm)->field.le_prev = LIST_NEXT((elm), field); \
-	} while (0)
+#define	TAILQ_FIRST(head)	((head)->tqh_first)
 
-#define LIST_INSERT_HEAD(head, elm, field) do { \
-		if ((LIST_NEXT((elm), field) = LIST_FIRST((head))) != NULL) \
-			LIST_FIRST((head))->field.le_prev = &LIST_NEXT((elm), field); \
-		LIST_FIRST((head)) = (elm); \
-		(elm)->field.le_prev = &LIST_FIRST((head)); \
-	} while (0)
+#define	TAILQ_LAST(head, headname)					\
+	(*(((struct headname *)((head)->tqh_last))->tqh_last))
+
+#define	TAILQ_NEXT(elm, field) ((elm)->field.tqe_next)
+
+#define	TAILQ_PREV(elm, headname, field)				\
+	(*(((struct headname *)((elm)->field.tqe_prev))->tqh_last))
+
+#define	TAILQ_FOREACH(var, head, field)					\
+	for ((var) = TAILQ_FIRST((head));				\
+	    (var);							\
+	    (var) = TAILQ_NEXT((var), field))
+
+#define	TAILQ_REMOVE(head, elm, field) do {				\
+	if ((TAILQ_NEXT((elm), field)) != NULL)				\
+		TAILQ_NEXT((elm), field)->field.tqe_prev = 		\
+		    (elm)->field.tqe_prev;				\
+	else {								\
+		(head)->tqh_last = (elm)->field.tqe_prev;		\
+	}								\
+	*(elm)->field.tqe_prev = TAILQ_NEXT((elm), field);		\
+	TRASHIT(*oldnext);						\
+	TRASHIT(*oldprev);						\
+} while (0)
+
+#define	TAILQ_INSERT_TAIL(head, elm, field) do {			\
+	TAILQ_NEXT((elm), field) = NULL;				\
+	(elm)->field.tqe_prev = (head)->tqh_last;			\
+	*(head)->tqh_last = (elm);					\
+	(head)->tqh_last = &TAILQ_NEXT((elm), field);			\
+} while (0)
+
+#define	TAILQ_HEAD_INITIALIZER(head)					\
+	{ NULL, &(head).tqh_first }
+
+#define	TAILQ_CONCAT(head1, head2, field) do {				\
+	if (!TAILQ_EMPTY(head2)) {					\
+		*(head1)->tqh_last = (head2)->tqh_first;		\
+		(head2)->tqh_first->field.tqe_prev = (head1)->tqh_last;	\
+		(head1)->tqh_last = (head2)->tqh_last;			\
+		TAILQ_INIT((head2));					\
+	}								\
+} while (0)
+
+#define	LIST_HEAD(name, type)						\
+struct name {								\
+	struct type *lh_first;	/* first element */			\
+}
+
+#define	LIST_ENTRY(type)						\
+struct {								\
+	struct type *le_next;	/* next element */			\
+	struct type **le_prev;	/* address of previous next element */	\
+}
+
+#define	LIST_EMPTY(head)	((head)->lh_first == NULL)
+
+#define	LIST_FIRST(head)	((head)->lh_first)
+
+#define	LIST_FOREACH(var, head, field)					\
+	for ((var) = LIST_FIRST((head));				\
+	    (var);							\
+	    (var) = LIST_NEXT((var), field))
+
+#define	LIST_FOREACH_SAFE(var, head, field, tvar)			\
+	for ((var) = LIST_FIRST((head));				\
+	    (var) && ((tvar) = LIST_NEXT((var), field), 1);		\
+	    (var) = (tvar))
+
+#define	LIST_INIT(head) do {						\
+	LIST_FIRST((head)) = NULL;					\
+} while (0)
+
+#define	LIST_NEXT(elm, field)	((elm)->field.le_next)
+
+#define	LIST_REMOVE(elm, field) do {					\
+	if (LIST_NEXT((elm), field) != NULL)				\
+		LIST_NEXT((elm), field)->field.le_prev = 		\
+		    (elm)->field.le_prev;				\
+	*(elm)->field.le_prev = LIST_NEXT((elm), field);		\
+	TRASHIT(*oldnext);						\
+	TRASHIT(*oldprev);						\
+} while (0)
+
+#define	LIST_INSERT_HEAD(head, elm, field) do {				\
+	if ((LIST_NEXT((elm), field) = LIST_FIRST((head))) != NULL)	\
+		LIST_FIRST((head))->field.le_prev = &LIST_NEXT((elm), field);\
+	LIST_FIRST((head)) = (elm);					\
+	(elm)->field.le_prev = &LIST_FIRST((head));			\
+} while (0)
 
 #endif // __DISPATCH_SHIMS_SYS_QUEUE__
