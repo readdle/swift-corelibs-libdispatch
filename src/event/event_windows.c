@@ -364,7 +364,7 @@ _dispatch_socket_callback(PTP_CALLBACK_INSTANCE inst, void *context,
 		} else if (lNetworkEvents & FD_READ) {
 			ioctlsocket(sock, FIONREAD, &dwBytesAvailable);
 		}
-		if (lNetworkEvents & FD_READ) {
+		if ((lNetworkEvents & FD_READ) && (dwBytesAvailable > 0 || (lNetworkEvents & FD_CLOSE))) {
 			_dispatch_muxnote_retain(dmn);
 			if (!PostQueuedCompletionStatus(hPort, dwBytesAvailable,
 					(ULONG_PTR)DISPATCH_PORT_SOCKET_READ, (LPOVERLAPPED)dmn)) {
