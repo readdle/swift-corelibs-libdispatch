@@ -24,6 +24,21 @@ if(CMAKE_SYSTEM_NAME STREQUAL Windows)
   include_directories(BEFORE SYSTEM ${DISPATCH_INCLUDES})
   dispatch_windows_lib_for_arch(${CMAKE_SYSTEM_PROCESSOR} DISPATCH_LIBDIR)
   link_directories(${DISPATCH_LIBDIR})
+
+  option(DISPATCH_ENABLE_PDB OFF)
+  if (DISPATCH_ENABLE_PDB AND CMAKE_BUILD_TYPE STREQUAL "Release")
+    function(append value)
+      foreach(variable ${ARGN})
+        set(${variable} "${${variable}} ${value}" PARENT_SCOPE)
+      endforeach(variable)
+    endfunction()
+
+    append("/Zi" CMAKE_C_FLAGS CMAKE_CXX_FLAGS)
+    # /DEBUG disables linker GC and ICF, but we want those in Release mode.
+    append("/DEBUG /OPT:REF /OPT:ICF"
+          CMAKE_EXE_LINKER_FLAGS CMAKE_MODULE_LINKER_FLAGS
+          CMAKE_SHARED_LINKER_FLAGS)
+  endif()
 endif()
 
 set(CMAKE_C_STANDARD 11)
