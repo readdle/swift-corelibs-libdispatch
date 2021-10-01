@@ -218,7 +218,10 @@ _dispatch_muxnote_disarm_events(dispatch_muxnote_t dmn,
 			lNetworkEvents = 0;
 			iResult = WSAEventSelect((SOCKET)dmn->dmn_ident, NULL, 0);
 		}
-		if (iResult != 0) {
+		// SR-13383: There is possibility to catch WSAENOTSOCK here,
+		// while it doesn't indicate any critical error. E.g. this happens
+		// when a connection is closed due to a network timeout.
+		if (iResult != 0 && iResult != WSAENOTSOCK) {
 			DISPATCH_INTERNAL_CRASH(WSAGetLastError(), "WSAEventSelect");
 		}
 		dmn->dmn_network_events = lNetworkEvents;
