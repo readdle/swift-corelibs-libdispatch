@@ -408,6 +408,28 @@ dispatch_io_create_f(dispatch_io_type_t type, dispatch_fd_t fd,
 
 #if defined(_WIN32)
 #define _is_separator(ch) ((ch) == '/' || (ch) == '\\')
+
+static WCHAR *
+_dispatch_win32_copy_wide_from_utf8(const char *str) {
+	int cchLength = MultiByteToWideChar(CP_UTF8, 0, str, -1, NULL, 0);
+	if (cchLength <= 0) {
+		return NULL;
+	}
+
+	WCHAR *wszResult = malloc(cchLength * sizeof(WCHAR));
+	if (!wszResult) {
+		return NULL;
+	}
+
+	cchLength = MultiByteToWideChar(CP_UTF8, 0, str, -1, wszResult, cchLength);
+	if (cchLength) {
+		return wszResult;
+	}
+
+	free(wszResult);
+	return NULL;
+}
+
 #else
 #define _is_separator(ch) ((ch) == '/')
 #endif
@@ -447,10 +469,23 @@ dispatch_io_create_with_path(dispatch_io_type_t type, const char *path,
 	_dispatch_retain(channel);
 	dispatch_async(channel->queue, ^{
 		int err = 0;
+#if defined(_WIN32)
+		struct _stat st;
+		WCHAR *wszPath = _dispatch_win32_copy_wide_from_utf8(path);
+		if (!wszPath) {
+			err = (int)GetLastError();
+			free(path_data);
+			_dispatch_io_init(channel, NULL, queue, err, cleanup_handler);
+			_dispatch_release(channel);
+			_dispatch_release(queue);
+			return;
+		}
+#else
 		struct stat st;
+#endif
 		_dispatch_io_syscall_switch_noerr(err,
 #if defined(_WIN32)
-			stat(path_data->path, &st),
+			_wstat(wszPath, &st),
 #else
 			(path_data->oflag & O_NOFOLLOW) == O_NOFOLLOW
 #if __APPLE__
@@ -476,7 +511,11 @@ dispatch_io_create_with_path(dispatch_io_type_t type, const char *path,
 					*c = 0;
 					int perr;
 					_dispatch_io_syscall_switch_noerr(perr,
+#if defined(_WIN32)
+						_wstat(wszPath, &st),
+#else
 						stat(path_data->path, &st),
+#endif
 						case 0:
 							// Since the parent directory exists, open() will
 							// create a regular file after the fd_entry has
@@ -493,6 +532,9 @@ dispatch_io_create_with_path(dispatch_io_type_t type, const char *path,
 				}
 				break;
 		);
+#if defined(_WIN32)
+		free(wszPath);
+#endif
 		channel->err = err;
 		if (err) {
 			free(path_data);
@@ -1333,9 +1375,15 @@ _dispatch_fd_entry_guarded_open(dispatch_fd_entry_t fd_entry, const char *path,
 	} else if (oflag & _O_TRUNC) {
 		dwCreationDisposition = TRUNCATE_EXISTING;
 	}
-	return (dispatch_fd_t)CreateFile(path, dwDesiredAccess,
+	WCHAR *wszPath = _dispatch_win32_copy_wide_from_utf8(path);
+	if (!wszPath) {
+		return -1;
+	}
+	dispatch_fd_t fd = (dispatch_fd_t)CreateFileW(wszPath, dwDesiredAccess,
 			FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL,
 			dwCreationDisposition, 0, NULL);
+	free(wszPath);
+	return fd;
 #else
 	return open(path, oflag, mode);
 #endif
